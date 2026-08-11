@@ -495,7 +495,8 @@
     drawGrid(gridCanvas, vw, vh);
     ctx.drawImage(gridCanvas, 0, 0);
     // 정보 라벨
-    const { distCm, cellMm } = currentGridParams();
+    const gp = currentGridParams();
+    const { distCm, cols, fovDeg, cellMm } = gp;
     ctx.font = `${Math.round(vw/45)}px monospace`;
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(10,10, vw*0.42, vh*0.045+14);
@@ -504,10 +505,10 @@
 
     const dataUrl = cvs.toDataURL('image/jpeg', 0.9);
     cvs.toBlob((blob)=>{
-      const item = { blob, dataUrl, cellMm, distCm };
+      const item = { blob, dataUrl, cellMm, distCm, cols, fovDeg };
       if(camMode === 'closeup'){
         state.closeupPhotos.push(item);
-        renderThumbs('closeupThumbs', state.closeupPhotos, '격자');
+        renderThumbs('closeupThumbs', state.closeupPhotos, closeupTag);
       }
       closeCamera();
     }, 'image/jpeg', 0.9);
@@ -618,6 +619,16 @@
   function panoTag(item){
     return item.cardinal + (item.heading!=null ? ` ${Math.round(item.heading)}°` : '');
   }
+  function closeupTag(item){
+    return `${item.distCm}cm·${item.cellMm.toFixed(1)}mm`;
+  }
+  function closeupPdfCaption(item){
+    const cols = item.cols ?? '-';
+    const fov = item.fovDeg ?? '-';
+    const dist = item.distCm ?? '-';
+    const cell = (item.cellMm!=null) ? item.cellMm.toFixed(1) : '-';
+    return `촬영거리 ${dist}cm · 격자 ${cols}×${cols}칸 · 화각 ${fov}° · 칸당 약 ${cell}mm`;
+  }
 
   function renderThumbs(containerId, arr, tag){
     const c = $(containerId);
@@ -664,7 +675,7 @@
     $('fSite').value=''; $('fSpecies').value=''; $('fCount').value='';
     $('fStage').value=''; $('fHabitat').value=''; $('fNote').value='';
     state.closeupPhotos = []; state.panoPhotos = [];
-    renderThumbs('closeupThumbs', [], '격자');
+    renderThumbs('closeupThumbs', [], closeupTag);
     renderThumbs('panoThumbs', [], panoTag);
     state.datetime = nowStr();
     $('fDatetime').value = state.datetime;
@@ -792,25 +803,26 @@
 
       y += 4;
       const photoSets = [
-        ['미소서식지·개체 클로즈업(격자)', r.closeupPhotos||[], null],
-        ['방위별 전경사진', r.panoPhotos||[], panoTag]
+        ['미소서식지·개체 클로즈업(격자)', r.closeupPhotos||[], closeupPdfCaption, 2],
+        ['방위별 전경사진', r.panoPhotos||[], panoTag, 1]
       ];
-      for(const [label, arr, captionFn] of photoSets){
+      for(const [label, arr, captionFn, capLineCount] of photoSets){
         if(!arr.length) continue;
         if(y>250){ doc.addPage(); y=18; }
         doc.setFont('NanumGothic','bold'); doc.setFontSize(11);
         doc.text(label, margin, y); y+=5;
         let x = margin;
         const w = 55, h = 55*0.75;
-        const rowStep = h + (captionFn ? 14 : 8);
+        const rowStep = h + (captionFn ? (4 + capLineCount*3.6) : 8);
         for(const item of arr){
           const url = await blobToDataUrl(item);
           if(x + w > pageW-margin){ x = margin; y += rowStep; }
-          if(y + h > 275){ doc.addPage(); y=18; x=margin; }
+          if(y + h > 270){ doc.addPage(); y=18; x=margin; }
           try{ doc.addImage(url, 'JPEG', x, y, w, h); }catch(e){}
           if(captionFn){
-            doc.setFont('NanumGothic','normal'); doc.setFontSize(8);
-            doc.text(captionFn(item), x, y+h+4);
+            doc.setFont('NanumGothic','normal'); doc.setFontSize(7.5);
+            const capLines = doc.splitTextToSize(captionFn(item), w);
+            doc.text(capLines, x, y+h+3.5);
           }
           x += w+6;
         }
@@ -818,8 +830,8 @@
       }
     }
 
-    const nameParts = [safeName(records[0].species)||'조사기록', safeName(records[0].datetime).slice(0,10), safeName(records[0].observer)];
-    const fname = `야장_${nameParts.filter(Boolean).join('_')}${records.length>1? `_외${records.length-1}건`:''}.pdf`;
+    const nameParts = [safeName(records[0].species)||'조사기록', safeName(records[0].datetime).slice(0,10), safeName(records[0].region)];
+    const fname = `${nameParts.filter(Boolean).join('_')}.pdf`;
     doc.save(fname);
   }
 
