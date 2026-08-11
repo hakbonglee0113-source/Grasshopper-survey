@@ -755,6 +755,14 @@
       fr.readAsDataURL(item.blob);
     });
   }
+  function getImageSize(dataUrl){
+    return new Promise((resolve)=>{
+      const img = new Image();
+      img.onload = ()=> resolve({ w: img.naturalWidth || 4, h: img.naturalHeight || 3 });
+      img.onerror = ()=> resolve({ w: 4, h: 3 });
+      img.src = dataUrl;
+    });
+  }
 
   async function exportRecordsToPdf(records){
     if(!records.length){ alert('내보낼 기록이 없습니다.'); return; }
@@ -818,7 +826,12 @@
           const url = await blobToDataUrl(item);
           if(x + w > pageW-margin){ x = margin; y += rowStep; }
           if(y + h > 270){ doc.addPage(); y=18; x=margin; }
-          try{ doc.addImage(url, 'JPEG', x, y, w, h); }catch(e){}
+          // 원본 이미지 비율을 유지하며 박스(w×h) 안에 맞춰 그리기 (찌그러짐 방지)
+          const size = await getImageSize(url);
+          let dw = w, dh = w * size.h / size.w;
+          if(dh > h){ dh = h; dw = h * size.w / size.h; }
+          const dx = x + (w-dw)/2, dy = y + (h-dh)/2;
+          try{ doc.addImage(url, 'JPEG', dx, dy, dw, dh); }catch(e){}
           if(captionFn){
             doc.setFont('NanumGothic','normal'); doc.setFontSize(7.5);
             const capLines = doc.splitTextToSize(captionFn(item), w);
