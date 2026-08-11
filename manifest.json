@@ -1,0 +1,15 @@
+{
+  "name": "뚱보주름메뚜기 현장조사 야장",
+  "short_name": "뚱보주름메뚜기",
+  "description": "뚱보주름메뚜기 현장조사용 오프라인 디지털 야장",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#2E6B1F",
+  "theme_color": "#2E6B1F",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

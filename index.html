@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>뚱보주름메뚜기 현장조사 야장</title>
+<meta name="theme-color" content="#5B6B3F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="뚱보주름메뚜기">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --ink:#22301F; --paper:#EFEADA; --paper2:#E4DDC6; --olive:#5B6B3F;
+    --amber:#C97B2E; --amber-dk:#A65F1E; --red:#A83232; --line:#C9C1A4;
+    --mono: ui-monospace, Menlo, Consolas, "SFMono-Regular", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); padding-bottom:80px;}
+  header{background:var(--olive); color:var(--paper); padding:14px 16px calc(14px + env(safe-area-inset-top)) 16px; padding-top:calc(14px + env(safe-area-inset-top)); position:sticky; top:0; z-index:20;}
+  header h1{font-size:17px; margin:0 0 2px 0; letter-spacing:.2px;}
+  header .sub{font-size:11px; opacity:.85; font-family:var(--mono);}
+  #installBtn{position:absolute; right:14px; top:calc(14px + env(safe-area-inset-top)); background:var(--amber); color:#fff; border:none; border-radius:20px; padding:7px 12px; font-size:12px; display:none;}
+  main{padding:14px;}
+  .card{background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px;}
+  .card h2{font-size:13px; text-transform:uppercase; letter-spacing:.6px; color:var(--olive); margin:0 0 10px 0; display:flex; align-items:center; gap:6px;}
+  .stamp{display:inline-flex; align-items:center; gap:5px; border:1.5px dashed var(--olive); color:var(--olive); border-radius:20px; padding:3px 10px; font-family:var(--mono); font-size:11px;}
+  .stamp.ok{border-color:var(--amber); color:var(--amber-dk);}
+  .stamp .dot{width:7px; height:7px; border-radius:50%; background:var(--line);}
+  .stamp.ok .dot{background:var(--amber); box-shadow:0 0 0 3px rgba(201,123,46,.2);}
+  label{display:block; font-size:12px; color:#555; margin:10px 0 4px;}
+  input[type=text], input[type=number], textarea, select{
+    width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; font-size:15px; font-family:var(--sans); background:#FCFBF6;
+  }
+  input[readonly]{background:#F2EFE4; color:#555; font-family:var(--mono); font-size:13px;}
+  textarea{resize:vertical; min-height:56px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+  .btn{display:block; width:100%; text-align:center; padding:13px; border-radius:9px; border:none; font-size:14px; font-weight:600; margin-top:10px; cursor:pointer;}
+  .btn-amber{background:var(--amber); color:#fff;}
+  .btn-olive{background:var(--olive); color:#fff;}
+  .btn-outline{background:#fff; color:var(--olive); border:1.5px solid var(--olive);}
+  .btn-red{background:#fff; color:var(--red); border:1.5px solid var(--red);}
+  .btn-ghost{background:transparent; color:#666; border:1px dashed var(--line); font-weight:400;}
+  .thumbs{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;}
+  .thumb{position:relative; width:76px; height:76px; border-radius:8px; overflow:hidden; border:1px solid var(--line); background:#eee;}
+  .thumb img{width:100%; height:100%; object-fit:cover;}
+  .thumb .tag{position:absolute; bottom:0; left:0; right:0; background:rgba(34,48,31,.75); color:#fff; font-size:9px; text-align:center; padding:1px 0;}
+  .record{border:1px solid var(--line); border-radius:9px; padding:12px; margin-bottom:10px; background:#FCFBF6;}
+  .record .rtitle{font-weight:700; font-size:14px;}
+  .record .rmeta{font-family:var(--mono); font-size:11px; color:#666; margin-top:2px;}
+  .record .ractions{display:flex; gap:8px; margin-top:8px;}
+  .record .ractions button{flex:1; padding:8px; border-radius:7px; font-size:12px; border:1px solid var(--line); background:#fff;}
+  .empty{color:#888; font-size:13px; text-align:center; padding:20px 0;}
+  /* 카메라 모달 */
+  #camModal{position:fixed; inset:0; background:#000; z-index:100; display:none; flex-direction:column;}
+  #camModal.open{display:flex;}
+  #camStage{position:relative; flex:1; overflow:hidden; background:#000;}
+  #camVideo{width:100%; height:100%; object-fit:cover;}
+  #camGrid{position:absolute; inset:0; pointer-events:none;}
+  #camReading{position:absolute; top:10px; left:10px; right:10px; font-family:var(--mono); color:#fff; font-size:11px; background:rgba(0,0,0,.4); padding:6px 10px; border-radius:6px; display:flex; justify-content:space-between;}
+  #camGuide{position:absolute; left:10px; right:10px; bottom:14px; background:rgba(201,123,46,.92); color:#fff; font-size:12.5px; font-weight:600; text-align:center; padding:9px 12px; border-radius:8px; line-height:1.4;}
+  #camControls{background:#111; padding:14px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding-bottom:calc(14px + env(safe-area-inset-bottom));}
+  #camControls .side{width:60px;}
+  #shutterBtn{width:66px; height:66px; border-radius:50%; background:#fff; border:5px solid #888;}
+  #camCancel, #camDistBtn{color:#fff; background:none; border:none; font-size:13px;}
+  .hint{font-size:11px; color:#888; margin-top:4px; line-height:1.5;}
+  footer{position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--line); padding:10px 14px calc(10px + env(safe-area-inset-bottom)) 14px; z-index:10;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>뚱보주름메뚜기 현장조사 야장</h1>
+  <div class="sub" id="clock">-- </div>
+  <button id="installBtn">홈 화면에 추가</button>
+</header>
+
+<main>
+
+  <div class="card">
+    <h2>자동 입력 정보</h2>
+    <div class="row2">
+      <div><span class="stamp" id="gpsStamp"><span class="dot"></span>GPS 대기중</span></div>
+      <div><span class="stamp" id="wxStamp"><span class="dot"></span>기상 대기중</span></div>
+    </div>
+    <label>조사일시</label>
+    <input type="text" id="fDatetime" readonly>
+    <div class="row2">
+      <div>
+        <label>위도</label>
+        <input type="text" id="fLat" readonly>
+      </div>
+      <div>
+        <label>경도</label>
+        <input type="text" id="fLon" readonly>
+      </div>
+    </div>
+    <label>조사지역명 (행정구역, GPS 자동)</label>
+    <input type="text" id="fRegion" readonly placeholder="위치 확보 후 자동 조회됩니다">
+    <div class="row3">
+      <div>
+        <label>기온(℃)</label>
+        <input type="text" id="fTemp" readonly>
+      </div>
+      <div>
+        <label>습도(%)</label>
+        <input type="text" id="fHumid" readonly>
+      </div>
+      <div>
+        <label>풍속(m/s)</label>
+        <input type="text" id="fWind" readonly>
+      </div>
+    </div>
+    <button class="btn btn-ghost" id="refetchBtn">위치·기상 다시 불러오기</button>
+  </div>
+
+  <div class="card">
+    <h2>조사 기본정보</h2>
+    <label>조사자명</label>
+    <input type="text" id="fObserver" placeholder="예: 홍길동">
+    <label>발견지점명 / 구역</label>
+    <input type="text" id="fSite" placeholder="예: 영월 OO습지 3구역">
+    <label>대상 종명</label>
+    <input type="text" id="fSpecies" value="뚱보주름메뚜기" placeholder="예: 뚱보주름메뚜기">
+    <div class="row2">
+      <div>
+        <label>확인 개체수</label>
+        <input type="number" id="fCount" min="0" placeholder="0">
+      </div>
+      <div>
+        <label>생육영별</label>
+        <select id="fStage">
+          <option value="">선택안함</option>
+          <option>약충</option>
+          <option>성충</option>
+        </select>
+      </div>
+    </div>
+    <label>서식환경 / 식생</label>
+    <textarea id="fHabitat" placeholder="예: 벼과 우점 초지, 초장 약 40cm"></textarea>
+    <label>비고</label>
+    <textarea id="fNote"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>사진 기록</h2>
+    <button class="btn btn-amber" id="btnCloseup">🦗 개체 클로즈업 촬영 (격자)</button>
+    <div class="hint">촬영 화면과 저장된 사진 모두에 흰색 격자가 표시됩니다. 격자 1칸의 실제 크기는 아래 촬영거리 설정을 기준으로 자동 계산되며, scale bar를 함께 촬영하면 크기를 실측으로 교차검증할 수 있습니다.</div>
+    <button class="btn btn-olive" id="btnPanorama">🌄 서식지 파노라마 촬영</button>
+    <div class="hint">휴대폰 기본 카메라 앱이 열립니다. 카메라 앱에서 '파노라마' 모드로 전환 후 촬영해 주세요 (웹에서는 파노라마 모드를 자동 실행할 수 없는 기기 제한이 있습니다).</div>
+    <input type="file" accept="image/*" capture="environment" id="panoInput" style="display:none">
+
+    <div class="thumbs" id="closeupThumbs"></div>
+    <div class="thumbs" id="panoThumbs"></div>
+
+    <details style="margin-top:12px;">
+      <summary style="font-size:12px; color:#666;">격자 설정 (고급)</summary>
+      <div class="row3" style="margin-top:8px;">
+        <div>
+          <label>촬영거리(cm)</label>
+          <input type="number" id="setDist" value="100" min="5">
+        </div>
+        <div>
+          <label>격자 칸수</label>
+          <input type="number" id="setCols" value="6" min="2" max="12">
+        </div>
+        <div>
+          <label>카메라 화각(°)</label>
+          <input type="number" id="setFov" value="65" min="30" max="100">
+        </div>
+      </div>
+      <div class="hint">기본값은 촬영거리 1m(100cm) 기준입니다. 실제 기기 화각은 제조사마다 달라 오차가 있을 수 있으니, 알려진 크기의 물체로 한 번 보정해 사용하는 것을 권장합니다.</div>
+    </details>
+  </div>
+
+  <button class="btn btn-olive" id="saveBtn" style="font-size:16px; padding:15px;">✔ 이 기록 저장</button>
+
+  <div class="card" style="margin-top:20px;">
+    <h2>저장된 기록 (<span id="recCount">0</span>건)</h2>
+    <div id="recordList"><div class="empty">아직 저장된 기록이 없습니다.</div></div>
+  </div>
+
+</main>
+
+<footer>
+  <button class="btn btn-amber" id="exportPdfBtn" style="margin-top:0;">📄 전체 기록 PDF로 내보내기</button>
+</footer>
+
+<!-- 인앱 카메라(격자 오버레이) 모달 -->
+<div id="camModal">
+  <div id="camStage">
+    <video id="camVideo" autoplay playsinline muted></video>
+    <canvas id="camGrid"></canvas>
+    <div id="camReading">
+      <span id="camCellSize">칸당 --</span>
+      <span id="camDistLabel">거리 100cm</span>
+    </div>
+    <div id="camGuide">📏 대상종 발견지점 옆에 미리 준비된 scale bar를 올려놓고 촬영하십시오</div>
+  </div>
+  <div id="camControls">
+    <div class="side"><button id="camCancel">취소</button></div>
+    <button id="shutterBtn"></button>
+    <div class="side" style="text-align:right;"><button id="camDistBtn">거리↕</button></div>
+  </div>
+</div>
+
+<canvas id="captureCanvas" style="display:none;"></canvas>
+
+<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- 유틸 ---------- */
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => String(n).padStart(2,'0');
+  function nowStr(){
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+  function safeName(s){ return (s||'').toString().trim().replace(/[\\/:*?"<>|]+/g,'_').replace(/\s+/g,'_'); }
+
+  /* ---------- 시계 표시 ---------- */
+  $('clock').textContent = nowStr();
+  setInterval(()=>{ $('clock').textContent = nowStr(); }, 1000);
+
+  /* ---------- 상태 ---------- */
+  let state = {
+    datetime: nowStr(),
+    lat: null, lon: null, region: '',
+    temp: null, humid: null, wind: null,
+    closeupPhotos: [],   // {blob, dataUrl}
+    panoPhotos: []        // {blob, dataUrl}
+  };
+  $('fDatetime').value = state.datetime;
+
+  /* ---------- GPS + 기상(Open-Meteo, 무료/키불필요) ---------- */
+  function setStamp(el, ok, text){
+    el.className = 'stamp' + (ok? ' ok':'');
+    el.innerHTML = '<span class="dot"></span>' + text;
+  }
+
+  async function fetchWeather(lat, lon){
+    setStamp($('wxStamp'), false, '기상 조회중...');
+    try{
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m&timezone=auto`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const c = data.current || {};
+      state.temp = c.temperature_2m ?? null;
+      state.humid = c.relative_humidity_2m ?? null;
+      state.wind = c.wind_speed_10m ?? null;
+      $('fTemp').value = state.temp!=null? state.temp+'℃' : '-';
+      $('fHumid').value = state.humid!=null? state.humid+'%' : '-';
+      $('fWind').value = state.wind!=null? state.wind+'m/s' : '-';
+      setStamp($('wxStamp'), true, '기상 자동입력 완료');
+    }catch(e){
+      setStamp($('wxStamp'), false, '기상 조회 실패 (오프라인?)');
+    }
+  }
+
+  async function fetchRegion(lat, lon){
+    $('fRegion').value = '조회중...';
+    try{
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14&accept-language=ko`;
+      const res = await fetch(url, { headers: { 'Accept':'application/json' } });
+      const data = await res.json();
+      const a = data.address || {};
+      // 시/도 + 시군구 + 읍면동 우선순위로 조합
+      const sido = a.province || a.state || '';
+      const sigungu = a.city || a.county || a.borough || '';
+      const dong = a.village || a.town || a.suburb || a.neighbourhood || '';
+      const parts = [sido, sigungu, dong].filter(Boolean);
+      state.region = parts.length ? parts.join(' ') : (data.display_name || '');
+      $('fRegion').value = state.region || '조회 실패';
+    }catch(e){
+      state.region = '';
+      $('fRegion').value = '조회 실패 (오프라인?)';
+    }
+  }
+
+  function fetchGPS(){
+    setStamp($('gpsStamp'), false, 'GPS 확인중...');
+    if(!navigator.geolocation){
+      setStamp($('gpsStamp'), false, 'GPS 미지원 기기');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition((pos)=>{
+      state.lat = pos.coords.latitude.toFixed(6);
+      state.lon = pos.coords.longitude.toFixed(6);
+      $('fLat').value = state.lat;
+      $('fLon').value = state.lon;
+      setStamp($('gpsStamp'), true, '위치 확보됨');
+      fetchWeather(state.lat, state.lon);
+      fetchRegion(state.lat, state.lon);
+    }, (err)=>{
+      setStamp($('gpsStamp'), false, '위치 접근 거부/실패');
+    }, { enableHighAccuracy:true, timeout:15000 });
+  }
+
+  $('refetchBtn').addEventListener('click', ()=>{
+    state.datetime = nowStr();
+    $('fDatetime').value = state.datetime;
+    fetchGPS();
+  });
+  fetchGPS();
+
+  /* ---------- IndexedDB ---------- */
+  let db;
+  const dbReq = indexedDB.open('grasshopperSurveyDB', 1);
+  dbReq.onupgradeneeded = (e)=>{
+    const d = e.target.result;
+    if(!d.objectStoreNames.contains('records')){
+      d.createObjectStore('records', { keyPath:'id' });
+    }
+  };
+  dbReq.onsuccess = (e)=>{ db = e.target.result; renderRecords(); };
+  dbReq.onerror = ()=>{ alert('저장소 초기화 실패. 브라우저 저장공간 설정을 확인해주세요.'); };
+
+  function dbAdd(record){
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction('records','readwrite');
+      tx.objectStore('records').put(record);
+      tx.oncomplete = ()=>resolve();
+      tx.onerror = (e)=>reject(e);
+    });
+  }
+  function dbDelete(id){
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction('records','readwrite');
+      tx.objectStore('records').delete(id);
+      tx.oncomplete = ()=>resolve();
+      tx.onerror = (e)=>reject(e);
+    });
+  }
+  function dbAll(){
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction('records','readonly');
+      const req = tx.objectStore('records').getAll();
+      req.onsuccess = ()=>resolve(req.result || []);
+      req.onerror = (e)=>reject(e);
+    });
+  }
+
+  /* ---------- 인앱 카메라 + 격자 오버레이 ---------- */
+  let camStream = null;
+  let camMode = null; // 'closeup'
+  const camVideo = $('camVideo');
+  const camGridCanvas = $('camGrid');
+
+  function currentGridParams(){
+    const distCm = parseFloat($('setDist').value) || 100;
+    const cols = parseInt($('setCols').value) || 6;
+    const fovDeg = parseFloat($('setFov').value) || 65;
+    const distMm = distCm * 10;
+    const fovRad = fovDeg * Math.PI/180;
+    const widthMm = 2 * distMm * Math.tan(fovRad/2);
+    const cellMm = widthMm / cols;
+    return { distCm, cols, fovDeg, cellMm };
+  }
+
+  function drawGrid(canvas, w, h){
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,w,h);
+    const { cols } = currentGridParams();
+    const rows = Math.round(cols * (h/w));
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = Math.max(1, w/500);
+    for(let i=1;i<cols;i++){
+      const x = (w/cols)*i;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+    }
+    for(let i=1;i<rows;i++){
+      const y = (h/rows)*i;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+    }
+    // 테두리
+    ctx.strokeRect(1,1,w-2,h-2);
+  }
+
+  function updateReading(){
+    const { distCm, cellMm } = currentGridParams();
+    $('camCellSize').textContent = `칸당 약 ${cellMm.toFixed(1)}mm`;
+    $('camDistLabel').textContent = `거리 ${distCm}cm`;
+  }
+
+  async function openCamera(mode){
+    camMode = mode;
+    $('camModal').classList.add('open');
+    updateReading();
+    try{
+      camStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal:'environment' }, width:{ideal:1920}, height:{ideal:1080} },
+        audio:false
+      });
+      camVideo.srcObject = camStream;
+      camVideo.onloadedmetadata = ()=>{
+        drawGrid(camGridCanvas, camVideo.clientWidth, camVideo.clientHeight);
+      };
+      window.addEventListener('resize', onCamResize);
+    }catch(e){
+      alert('카메라를 열 수 없습니다. 브라우저의 카메라 권한을 허용해주세요.');
+      closeCamera();
+    }
+  }
+  function onCamResize(){
+    if(camVideo.videoWidth) drawGrid(camGridCanvas, camVideo.clientWidth, camVideo.clientHeight);
+  }
+  function closeCamera(){
+    $('camModal').classList.remove('open');
+    if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+    window.removeEventListener('resize', onCamResize);
+  }
+
+  function capturePhoto(){
+    const vw = camVideo.videoWidth, vh = camVideo.videoHeight;
+    const cvs = $('captureCanvas');
+    cvs.width = vw; cvs.height = vh;
+    const ctx = cvs.getContext('2d');
+    ctx.drawImage(camVideo, 0, 0, vw, vh);
+    // 저장본에도 격자를 그대로 굽는다 (해상도 기준으로 재계산)
+    const gridCanvas = document.createElement('canvas');
+    drawGrid(gridCanvas, vw, vh);
+    ctx.drawImage(gridCanvas, 0, 0);
+    // 정보 라벨
+    const { distCm, cellMm } = currentGridParams();
+    ctx.font = `${Math.round(vw/45)}px monospace`;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(10,10, vw*0.42, vh*0.045+14);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(`촬영거리 ${distCm}cm · 칸당 약 ${cellMm.toFixed(1)}mm`, 18, 10+vh*0.03+10);
+
+    const dataUrl = cvs.toDataURL('image/jpeg', 0.9);
+    cvs.toBlob((blob)=>{
+      const item = { blob, dataUrl, cellMm, distCm };
+      if(camMode === 'closeup'){
+        state.closeupPhotos.push(item);
+        renderThumbs('closeupThumbs', state.closeupPhotos, '격자');
+      }
+      closeCamera();
+    }, 'image/jpeg', 0.9);
+  }
+
+  $('btnCloseup').addEventListener('click', ()=>openCamera('closeup'));
+  $('camCancel').addEventListener('click', closeCamera);
+  $('shutterBtn').addEventListener('click', capturePhoto);
+  $('camDistBtn').addEventListener('click', ()=>{
+    const cur = parseFloat($('setDist').value) || 100;
+    const next = cur >= 100 ? 30 : (cur >= 30 ? 50 : 100);
+    $('setDist').value = next;
+    updateReading();
+  });
+  ['setDist','setCols','setFov'].forEach(id=>{
+    $(id).addEventListener('input', ()=>{
+      updateReading();
+      if(camVideo.videoWidth) drawGrid(camGridCanvas, camVideo.clientWidth, camVideo.clientHeight);
+    });
+  });
+
+  /* ---------- 파노라마 (네이티브 카메라 앱 연동) ---------- */
+  $('btnPanorama').addEventListener('click', ()=> $('panoInput').click());
+  $('panoInput').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      state.panoPhotos.push({ blob:file, dataUrl:reader.result });
+      renderThumbs('panoThumbs', state.panoPhotos, '파노라마');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+
+  function renderThumbs(containerId, arr, tag){
+    const c = $(containerId);
+    c.innerHTML = '';
+    arr.forEach((item, idx)=>{
+      const div = document.createElement('div');
+      div.className = 'thumb';
+      div.innerHTML = `<img src="${item.dataUrl}"><div class="tag">${tag}</div>`;
+      div.addEventListener('click', ()=>{
+        if(confirm('이 사진을 삭제할까요?')){
+          arr.splice(idx,1);
+          renderThumbs(containerId, arr, tag);
+        }
+      });
+      c.appendChild(div);
+    });
+  }
+
+  /* ---------- 기록 저장 ---------- */
+  $('saveBtn').addEventListener('click', async ()=>{
+    if(!$('fSpecies').value.trim()){
+      if(!confirm('종명이 입력되지 않았습니다. 그래도 저장할까요?')) return;
+    }
+    const record = {
+      id: Date.now(),
+      datetime: state.datetime,
+      lat: state.lat, lon: state.lon, region: state.region,
+      temp: state.temp, humid: state.humid, wind: state.wind,
+      observer: $('fObserver').value,
+      site: $('fSite').value,
+      species: $('fSpecies').value,
+      count: $('fCount').value,
+      stage: $('fStage').value,
+      habitat: $('fHabitat').value,
+      note: $('fNote').value,
+      closeupPhotos: state.closeupPhotos,
+      panoPhotos: state.panoPhotos,
+      gridSettings: currentGridParams()
+    };
+    await dbAdd(record);
+    alert('기록이 저장되었습니다.');
+    // 폼 리셋(관찰정보만, 조사자명은 유지)
+    $('fSite').value=''; $('fSpecies').value=''; $('fCount').value='';
+    $('fStage').value=''; $('fHabitat').value=''; $('fNote').value='';
+    state.closeupPhotos = []; state.panoPhotos = [];
+    renderThumbs('closeupThumbs', [], '격자');
+    renderThumbs('panoThumbs', [], '파노라마');
+    state.datetime = nowStr();
+    $('fDatetime').value = state.datetime;
+    renderRecords();
+  });
+
+  /* ---------- 기록 목록 ---------- */
+  async function renderRecords(){
+    if(!db) return;
+    const all = await dbAll();
+    all.sort((a,b)=> b.id - a.id);
+    $('recCount').textContent = all.length;
+    const list = $('recordList');
+    if(all.length===0){ list.innerHTML = '<div class="empty">아직 저장된 기록이 없습니다.</div>'; return; }
+    list.innerHTML = '';
+    all.forEach(r=>{
+      const div = document.createElement('div');
+      div.className = 'record';
+      div.innerHTML = `
+        <div class="rtitle">${r.species || '(종명 미입력)'} · ${r.count||0}개체</div>
+        <div class="rmeta">${r.datetime} · ${r.region||'행정구역 미상'} · ${r.site||'지점 미입력'}</div>
+        <div class="rmeta">${r.lat && r.lon ? r.lat+', '+r.lon : 'GPS 없음'} · ${r.temp!=null? r.temp+'℃':''} ${r.humid!=null? r.humid+'%':''}</div>
+        <div class="ractions">
+          <button data-act="pdf">PDF로 저장</button>
+          <button data-act="del" style="color:#A83232;">삭제</button>
+        </div>
+      `;
+      div.querySelector('[data-act="pdf"]').addEventListener('click', ()=>exportRecordsToPdf([r]));
+      div.querySelector('[data-act="del"]').addEventListener('click', async ()=>{
+        if(confirm('이 기록을 삭제할까요? 되돌릴 수 없습니다.')){
+          await dbDelete(r.id);
+          renderRecords();
+        }
+      });
+      list.appendChild(div);
+    });
+  }
+
+  /* ---------- PDF 내보내기 ---------- */
+  async function blobToDataUrl(item){
+    if(item.dataUrl) return item.dataUrl;
+    return new Promise((resolve)=>{
+      const fr = new FileReader();
+      fr.onload = ()=>resolve(fr.result);
+      fr.readAsDataURL(item.blob);
+    });
+  }
+
+  async function exportRecordsToPdf(records){
+    if(!records.length){ alert('내보낼 기록이 없습니다.'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const pageW = 210, margin = 14;
+    let firstPage = true;
+
+    for(const r of records){
+      if(!firstPage) doc.addPage();
+      firstPage = false;
+      let y = 18;
+      doc.setFont('helvetica','bold'); doc.setFontSize(15);
+      doc.text('뚱보주름메뚜기 현장조사 야장', margin, y); y+=8;
+      doc.setDrawColor(180); doc.line(margin, y, pageW-margin, y); y+=7;
+
+      doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+      const rows = [
+        ['조사일시', r.datetime],
+        ['조사자', r.observer||'-'],
+        ['조사지역', r.region||'-'],
+        ['발견지점', r.site||'-'],
+        ['GPS', r.lat&&r.lon? `${r.lat}, ${r.lon}` : '-'],
+        ['기상', `${r.temp!=null? r.temp+'℃':'-'} / 습도 ${r.humid!=null? r.humid+'%':'-'} / 풍속 ${r.wind!=null? r.wind+'m/s':'-'}`],
+        ['종명', r.species||'-'],
+        ['개체수 / 영별', `${r.count||'-'}개체 / ${r.stage||'-'}`],
+        ['서식환경', r.habitat||'-'],
+        ['비고', r.note||'-']
+      ];
+      rows.forEach(([k,v])=>{
+        doc.setFont('helvetica','bold'); doc.text(k, margin, y);
+        doc.setFont('helvetica','normal');
+        const lines = doc.splitTextToSize(String(v), pageW-margin*2-32);
+        doc.text(lines, margin+32, y);
+        y += 6 * Math.max(1, lines.length);
+        if(y>270){ doc.addPage(); y=18; }
+      });
+
+      y += 4;
+      const photoSets = [
+        ['개체 클로즈업(격자)', r.closeupPhotos||[]],
+        ['서식지 파노라마', r.panoPhotos||[]]
+      ];
+      for(const [label, arr] of photoSets){
+        if(!arr.length) continue;
+        if(y>250){ doc.addPage(); y=18; }
+        doc.setFont('helvetica','bold'); doc.setFontSize(11);
+        doc.text(label, margin, y); y+=5;
+        let x = margin;
+        for(const item of arr){
+          const url = await blobToDataUrl(item);
+          const w = 55, h = 55*0.75;
+          if(x + w > pageW-margin){ x = margin; y += h+8; }
+          if(y + h > 280){ doc.addPage(); y=18; x=margin; }
+          try{ doc.addImage(url, 'JPEG', x, y, w, h); }catch(e){}
+          x += w+6;
+        }
+        y += h_safe(); 
+      }
+    }
+    function h_safe(){ return 55*0.75+10; }
+
+    const nameParts = [safeName(records[0].species)||'조사기록', safeName(records[0].datetime).slice(0,10), safeName(records[0].observer)];
+    const fname = `야장_${nameParts.filter(Boolean).join('_')}${records.length>1? `_외${records.length-1}건`:''}.pdf`;
+    doc.save(fname);
+  }
+
+  $('exportPdfBtn').addEventListener('click', async ()=>{
+    const all = await dbAll();
+    if(!all.length){ alert('저장된 기록이 없습니다. 먼저 기록을 저장해주세요.'); return; }
+    all.sort((a,b)=> a.id - b.id);
+    exportRecordsToPdf(all);
+  });
+
+  /* ---------- PWA 설치 ---------- */
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    e.preventDefault();
+    deferredPrompt = e;
+    $('installBtn').style.display = 'block';
+  });
+  $('installBtn').addEventListener('click', async ()=>{
+    if(deferredPrompt){
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      $('installBtn').style.display = 'none';
+    } else {
+      alert('iOS(사파리)에서는: 하단 공유 버튼 → "홈 화면에 추가"를 눌러 설치할 수 있습니다.');
+    }
+  });
+  // iOS는 beforeinstallprompt 미지원 → 안내 버튼 항상 노출
+  if(/iphone|ipad|ipod/i.test(navigator.userAgent)){
+    $('installBtn').style.display = 'block';
+  }
+
+  /* ---------- 서비스워커 등록 ---------- */
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });
+  }
+
+})();
+</script>
+</body>
+</html>
