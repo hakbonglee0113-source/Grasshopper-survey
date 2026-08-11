@@ -102,7 +102,7 @@
     </div>
     <label>조사일시</label>
     <input type="text" id="fDatetime" readonly>
-    <div class="row2">
+    <div class="row3">
       <div>
         <label>위도</label>
         <input type="text" id="fLat" readonly>
@@ -110,6 +110,10 @@
       <div>
         <label>경도</label>
         <input type="text" id="fLon" readonly>
+      </div>
+      <div>
+        <label>해발고도(m)</label>
+        <input type="text" id="fElev" readonly>
       </div>
     </div>
     <label>조사지역명 (행정구역, GPS 자동)</label>
@@ -124,10 +128,14 @@
         <input type="text" id="fHumid" readonly>
       </div>
       <div>
-        <label>풍속(m/s)</label>
+        <label>평균풍속(m/s)</label>
         <input type="text" id="fWind" readonly>
       </div>
     </div>
+    <label style="display:flex; align-items:center; gap:7px; margin-top:12px; font-size:13px; color:#444;">
+      <input type="checkbox" id="chkUpdateDatetime" checked style="width:16px; height:16px; margin:0;">
+      다시 불러올 때 조사일시도 현재 시각으로 갱신
+    </label>
     <button class="btn btn-ghost" id="refetchBtn">위치·기상 다시 불러오기</button>
   </div>
 
@@ -265,7 +273,7 @@
   /* ---------- 상태 ---------- */
   let state = {
     datetime: nowStr(),
-    lat: null, lon: null, region: '',
+    lat: null, lon: null, region: '', elevation: null,
     temp: null, humid: null, wind: null,
     closeupPhotos: [],   // {blob, dataUrl}
     panoPhotos: []        // {blob, dataUrl}
@@ -281,7 +289,7 @@
   async function fetchWeather(lat, lon){
     setStamp($('wxStamp'), false, '기상 조회중...');
     try{
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m&timezone=auto`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m&wind_speed_unit=ms&timezone=auto`;
       const res = await fetch(url);
       const data = await res.json();
       const c = data.current || {};
@@ -317,6 +325,21 @@
     }
   }
 
+  async function fetchElevation(lat, lon){
+    $('fElev').value = '조회중...';
+    try{
+      const url = `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const elev = Array.isArray(data.elevation) ? data.elevation[0] : null;
+      state.elevation = (elev!=null) ? Math.round(elev*10)/10 : null;
+      $('fElev').value = state.elevation!=null ? state.elevation+'m' : '조회 실패';
+    }catch(e){
+      state.elevation = null;
+      $('fElev').value = '조회 실패 (오프라인?)';
+    }
+  }
+
   function fetchGPS(){
     setStamp($('gpsStamp'), false, 'GPS 확인중...');
     if(!navigator.geolocation){
@@ -331,14 +354,17 @@
       setStamp($('gpsStamp'), true, '위치 확보됨');
       fetchWeather(state.lat, state.lon);
       fetchRegion(state.lat, state.lon);
+      fetchElevation(state.lat, state.lon);
     }, (err)=>{
       setStamp($('gpsStamp'), false, '위치 접근 거부/실패');
     }, { enableHighAccuracy:true, timeout:15000 });
   }
 
   $('refetchBtn').addEventListener('click', ()=>{
-    state.datetime = nowStr();
-    $('fDatetime').value = state.datetime;
+    if($('chkUpdateDatetime').checked){
+      state.datetime = nowStr();
+      $('fDatetime').value = state.datetime;
+    }
     fetchGPS();
   });
   fetchGPS();
@@ -612,7 +638,7 @@
     const record = {
       id: Date.now(),
       datetime: state.datetime,
-      lat: state.lat, lon: state.lon, region: state.region,
+      lat: state.lat, lon: state.lon, region: state.region, elevation: state.elevation,
       temp: state.temp, humid: state.humid, wind: state.wind,
       observer: $('fObserver').value,
       site: $('fSite').value,
@@ -653,7 +679,7 @@
       div.innerHTML = `
         <div class="rtitle">${r.species || '(종명 미입력)'} · ${r.count||0}개체</div>
         <div class="rmeta">${r.datetime} · ${r.region||'행정구역 미상'} · ${r.site||'지점 미입력'}</div>
-        <div class="rmeta">${r.lat && r.lon ? r.lat+', '+r.lon : 'GPS 없음'} · ${r.temp!=null? r.temp+'℃':''} ${r.humid!=null? r.humid+'%':''}</div>
+        <div class="rmeta">${r.lat && r.lon ? r.lat+', '+r.lon : 'GPS 없음'} ${r.elevation!=null? '· 해발 '+r.elevation+'m':''} · ${r.temp!=null? r.temp+'℃':''} ${r.humid!=null? r.humid+'%':''}</div>
         <div class="ractions">
           <button data-act="pdf">PDF로 저장</button>
           <button data-act="del" style="color:#A83232;">삭제</button>
@@ -741,7 +767,8 @@
         ['조사지역', r.region||'-'],
         ['발견지점', r.site||'-'],
         ['GPS', r.lat&&r.lon? `${r.lat}, ${r.lon}` : '-'],
-        ['기상', `${r.temp!=null? r.temp+'℃':'-'} / 습도 ${r.humid!=null? r.humid+'%':'-'} / 풍속 ${r.wind!=null? r.wind+'m/s':'-'}`],
+        ['해발고도', r.elevation!=null? `${r.elevation}m` : '-'],
+        ['기상', `${r.temp!=null? r.temp+'℃':'-'} / 습도 ${r.humid!=null? r.humid+'%':'-'} / 평균풍속 ${r.wind!=null? r.wind+'m/s':'-'}`],
         ['종명', r.species||'-'],
         ['개체수 / 영별', `${r.count||'-'}개체 / ${r.stage||'-'}`],
         ['서식환경', r.habitat||'-'],
