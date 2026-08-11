@@ -1,13 +1,15 @@
 // 메뚜기 현장조사 야장 - 서비스워커
 // 오프라인에서도 앱 셸(HTML/CSS/JS)과 jsPDF 라이브러리가 동작하도록 캐싱합니다.
-const CACHE_NAME = 'grasshopper-survey-v1';
+const CACHE_NAME = 'grasshopper-survey-v2';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'
+  'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js',
+  'https://cdn.jsdelivr.net/font-nanum/1.0/nanumgothic/v3/NanumGothic-Regular.ttf',
+  'https://cdn.jsdelivr.net/font-nanum/1.0/nanumgothic/v3/NanumGothic-Bold.ttf'
 ];
 
 self.addEventListener('install', (event) => {

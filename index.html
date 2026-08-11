@@ -64,6 +64,18 @@
   #camGrid{position:absolute; inset:0; pointer-events:none;}
   #camReading{position:absolute; top:10px; left:10px; right:10px; font-family:var(--mono); color:#fff; font-size:11px; background:rgba(0,0,0,.4); padding:6px 10px; border-radius:6px; display:flex; justify-content:space-between;}
   #camGuide{position:absolute; left:10px; right:10px; bottom:14px; background:rgba(201,123,46,.92); color:#fff; font-size:12.5px; font-weight:600; text-align:center; padding:9px 12px; border-radius:8px; line-height:1.4;}
+  /* 방위 측정 모달 */
+  #compassModal{position:fixed; inset:0; background:#101810; z-index:100; display:none; flex-direction:column;}
+  #compassModal.open{display:flex;}
+  #compassStage{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:16px;}
+  #compassGuide{background:rgba(201,123,46,.92); color:#fff; font-size:13px; font-weight:600; text-align:center; padding:10px 14px; border-radius:8px; line-height:1.5; max-width:420px;}
+  #compassDial{width:220px; height:220px; border-radius:50%; border:4px solid var(--amber); position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(255,255,255,.04);}
+  #compassNeedle{position:absolute; top:14px; left:50%; width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-bottom:34px solid var(--amber); transform:translateX(-50%); transform-origin:50% 96px; transition:transform .15s linear;}
+  #compassDeg{color:#fff; font-family:var(--mono); font-size:30px; font-weight:700;}
+  #compassCardinal{color:var(--amber); font-family:var(--mono); font-size:15px; margin-top:2px;}
+  #compassGrid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; width:100%; max-width:360px;}
+  #compassGrid button{padding:12px 0; border-radius:8px; border:1.5px solid var(--amber); background:transparent; color:#fff; font-size:13px; font-weight:700; font-family:var(--mono);}
+  #compassGrid button:active{background:var(--amber);}
   #camControls{background:#111; padding:14px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding-bottom:calc(14px + env(safe-area-inset-bottom));}
   #camControls .side{width:60px;}
   #shutterBtn{width:66px; height:66px; border-radius:50%; background:#fff; border:5px solid #888;}
@@ -149,10 +161,10 @@
 
   <div class="card">
     <h2>사진 기록</h2>
-    <button class="btn btn-amber" id="btnCloseup">🦗 개체 클로즈업 촬영 (격자)</button>
+    <button class="btn btn-amber" id="btnCloseup">🦗 미소서식지 및 개체 클로즈업 촬영(격자)</button>
     <div class="hint">촬영 화면과 저장된 사진 모두에 흰색 격자가 표시됩니다. 격자 1칸의 실제 크기는 아래 촬영거리 설정을 기준으로 자동 계산되며, scale bar를 함께 촬영하면 크기를 실측으로 교차검증할 수 있습니다.</div>
-    <button class="btn btn-olive" id="btnPanorama">🌄 서식지 파노라마 촬영</button>
-    <div class="hint">휴대폰 기본 카메라 앱이 열립니다. 카메라 앱에서 '파노라마' 모드로 전환 후 촬영해 주세요 (웹에서는 파노라마 모드를 자동 실행할 수 없는 기기 제한이 있습니다).</div>
+    <button class="btn btn-olive" id="btnPanorama">🧭 방위별 전경사진 촬영</button>
+    <div class="hint">방위(나침반)를 측정한 뒤 휴대폰 기본 카메라 앱이 열립니다. 기기에 방위 센서가 없거나 오차가 있으면 8방위 버튼으로 직접 선택할 수 있습니다.</div>
     <input type="file" accept="image/*" capture="environment" id="panoInput" style="display:none">
 
     <div class="thumbs" id="closeupThumbs"></div>
@@ -210,6 +222,27 @@
 </div>
 
 <canvas id="captureCanvas" style="display:none;"></canvas>
+
+<!-- 방위 측정 모달 -->
+<div id="compassModal">
+  <div id="compassStage">
+    <div id="compassGuide">📱 방위를 측정할 동안 휴대폰의 뒷면이 지면과 수평을 이루게 하십시오</div>
+    <div id="compassDial">
+      <div id="compassNeedle"></div>
+      <div id="compassDeg">--°</div>
+      <div id="compassCardinal">방위 감지 중...</div>
+    </div>
+    <div class="hint" style="color:#ddd; text-align:center; padding:0 20px;">센서 값이 부정확하거나 감지되지 않으면 아래에서 방위를 직접 선택하세요.</div>
+    <div id="compassGrid">
+      <button data-dir="N">N</button><button data-dir="NE">NE</button><button data-dir="E">E</button>
+      <button data-dir="SE">SE</button><button data-dir="S">S</button><button data-dir="SW">SW</button>
+      <button data-dir="W">W</button><button data-dir="NW">NW</button>
+    </div>
+  </div>
+  <div id="camControls">
+    <button id="compassCancel" style="color:#fff; background:none; border:none; font-size:13px;">취소</button>
+  </div>
+</div>
 
 <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
@@ -463,19 +496,95 @@
     });
   });
 
-  /* ---------- 파노라마 (네이티브 카메라 앱 연동) ---------- */
-  $('btnPanorama').addEventListener('click', ()=> $('panoInput').click());
+  /* ---------- 방위별 전경사진 (방위 센서 + 네이티브 카메라 앱 연동) ---------- */
+  let compassHeading = null;
+  let compassHandler = null;
+  let pendingDirection = null;
+
+  function cardinalFromDeg(deg){
+    const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+    return dirs[Math.round(((deg%360)+360)%360/45)%8];
+  }
+  function updateCompassUI(deg){
+    $('compassDeg').textContent = Math.round(deg) + '°';
+    $('compassCardinal').textContent = cardinalFromDeg(deg) + ' 방향 (자동감지)';
+    $('compassNeedle').style.transform = `translateX(-50%) rotate(${deg}deg)`;
+  }
+  function onOrientation(e){
+    let heading = null;
+    if(typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)){
+      heading = e.webkitCompassHeading;              // iOS: 이미 자북 기준 절대방위
+    } else if(e.alpha != null){
+      heading = (360 - e.alpha) % 360;                 // Android: alpha를 방위로 근사 변환
+    }
+    if(heading != null){
+      compassHeading = heading;
+      updateCompassUI(heading);
+    }
+  }
+  function startCompass(){
+    compassHandler = onOrientation;
+    if('ondeviceorientationabsolute' in window){
+      window.addEventListener('deviceorientationabsolute', compassHandler);
+    } else {
+      window.addEventListener('deviceorientation', compassHandler);
+    }
+  }
+  function stopCompass(){
+    if(compassHandler){
+      window.removeEventListener('deviceorientationabsolute', compassHandler);
+      window.removeEventListener('deviceorientation', compassHandler);
+      compassHandler = null;
+    }
+  }
+  async function openCompass(){
+    compassHeading = null;
+    $('compassDeg').textContent = '--°';
+    $('compassCardinal').textContent = '방위 감지 중...';
+    $('compassModal').classList.add('open');
+    if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+      try{
+        const perm = await DeviceOrientationEvent.requestPermission();
+        if(perm === 'granted') startCompass();
+        else $('compassCardinal').textContent = '방위 센서 권한 거부됨 - 아래에서 직접 선택하세요';
+      }catch(e){
+        $('compassCardinal').textContent = '방위 센서 사용 불가 - 아래에서 직접 선택하세요';
+      }
+    } else if('DeviceOrientationEvent' in window){
+      startCompass();
+    } else {
+      $('compassCardinal').textContent = '이 기기는 방위 센서를 지원하지 않습니다 - 아래에서 직접 선택하세요';
+    }
+  }
+  function closeCompass(){
+    $('compassModal').classList.remove('open');
+    stopCompass();
+  }
+  $('btnPanorama').addEventListener('click', openCompass);
+  $('compassCancel').addEventListener('click', closeCompass);
+  $('compassGrid').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-dir]');
+    if(!btn) return;
+    pendingDirection = { cardinal: btn.dataset.dir, heading: compassHeading };
+    closeCompass();
+    $('panoInput').click();
+  });
   $('panoInput').addEventListener('change', (e)=>{
     const file = e.target.files[0];
-    if(!file) return;
+    if(!file){ pendingDirection = null; return; }
+    const dir = pendingDirection || { cardinal:'-', heading:null };
     const reader = new FileReader();
     reader.onload = ()=>{
-      state.panoPhotos.push({ blob:file, dataUrl:reader.result });
-      renderThumbs('panoThumbs', state.panoPhotos, '파노라마');
+      state.panoPhotos.push({ blob:file, dataUrl:reader.result, cardinal:dir.cardinal, heading:dir.heading });
+      renderThumbs('panoThumbs', state.panoPhotos, panoTag);
+      pendingDirection = null;
     };
     reader.readAsDataURL(file);
     e.target.value = '';
   });
+  function panoTag(item){
+    return item.cardinal + (item.heading!=null ? ` ${Math.round(item.heading)}°` : '');
+  }
 
   function renderThumbs(containerId, arr, tag){
     const c = $(containerId);
@@ -483,7 +592,8 @@
     arr.forEach((item, idx)=>{
       const div = document.createElement('div');
       div.className = 'thumb';
-      div.innerHTML = `<img src="${item.dataUrl}"><div class="tag">${tag}</div>`;
+      const label = typeof tag === 'function' ? tag(item) : tag;
+      div.innerHTML = `<img src="${item.dataUrl}"><div class="tag">${label}</div>`;
       div.addEventListener('click', ()=>{
         if(confirm('이 사진을 삭제할까요?')){
           arr.splice(idx,1);
@@ -522,7 +632,7 @@
     $('fStage').value=''; $('fHabitat').value=''; $('fNote').value='';
     state.closeupPhotos = []; state.panoPhotos = [];
     renderThumbs('closeupThumbs', [], '격자');
-    renderThumbs('panoThumbs', [], '파노라마');
+    renderThumbs('panoThumbs', [], panoTag);
     state.datetime = nowStr();
     $('fDatetime').value = state.datetime;
     renderRecords();
@@ -560,6 +670,38 @@
     });
   }
 
+  /* ---------- PDF 한글 폰트 (jsPDF 기본 폰트는 한글 미지원 → 나눔고딕 임베드) ---------- */
+  let nanumRegularB64 = null, nanumBoldB64 = null;
+  async function fetchAsBase64(url){
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('font fetch failed: '+url);
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    const chunk = 0x8000;
+    for(let i=0;i<bytes.length;i+=chunk){
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+    }
+    return btoa(binary);
+  }
+  async function loadKoreanFonts(){
+    if(!nanumRegularB64){
+      nanumRegularB64 = await fetchAsBase64('https://cdn.jsdelivr.net/font-nanum/1.0/nanumgothic/v3/NanumGothic-Regular.ttf');
+    }
+    if(!nanumBoldB64){
+      try{
+        nanumBoldB64 = await fetchAsBase64('https://cdn.jsdelivr.net/font-nanum/1.0/nanumgothic/v3/NanumGothic-Bold.ttf');
+      }catch(e){ nanumBoldB64 = nanumRegularB64; }
+    }
+  }
+  function registerKoreanFont(doc){
+    doc.addFileToVFS('NanumGothic-Regular.ttf', nanumRegularB64);
+    doc.addFont('NanumGothic-Regular.ttf', 'NanumGothic', 'normal');
+    doc.addFileToVFS('NanumGothic-Bold.ttf', nanumBoldB64);
+    doc.addFont('NanumGothic-Bold.ttf', 'NanumGothic', 'bold');
+    doc.setFont('NanumGothic','normal');
+  }
+
   /* ---------- PDF 내보내기 ---------- */
   async function blobToDataUrl(item){
     if(item.dataUrl) return item.dataUrl;
@@ -572,8 +714,15 @@
 
   async function exportRecordsToPdf(records){
     if(!records.length){ alert('내보낼 기록이 없습니다.'); return; }
+    try{
+      await loadKoreanFonts();
+    }catch(e){
+      alert('한글 PDF 폰트를 불러오지 못했습니다. 인터넷 연결을 확인한 뒤(최초 1회는 온라인이 필요합니다) 다시 시도해주세요.');
+      return;
+    }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit:'mm', format:'a4' });
+    registerKoreanFont(doc);
     const pageW = 210, margin = 14;
     let firstPage = true;
 
@@ -581,11 +730,11 @@
       if(!firstPage) doc.addPage();
       firstPage = false;
       let y = 18;
-      doc.setFont('helvetica','bold'); doc.setFontSize(15);
+      doc.setFont('NanumGothic','bold'); doc.setFontSize(15);
       doc.text('뚱보주름메뚜기 현장조사 야장', margin, y); y+=8;
       doc.setDrawColor(180); doc.line(margin, y, pageW-margin, y); y+=7;
 
-      doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+      doc.setFont('NanumGothic','normal'); doc.setFontSize(10.5);
       const rows = [
         ['조사일시', r.datetime],
         ['조사자', r.observer||'-'],
@@ -599,8 +748,8 @@
         ['비고', r.note||'-']
       ];
       rows.forEach(([k,v])=>{
-        doc.setFont('helvetica','bold'); doc.text(k, margin, y);
-        doc.setFont('helvetica','normal');
+        doc.setFont('NanumGothic','bold'); doc.text(k, margin, y);
+        doc.setFont('NanumGothic','normal');
         const lines = doc.splitTextToSize(String(v), pageW-margin*2-32);
         doc.text(lines, margin+32, y);
         y += 6 * Math.max(1, lines.length);
@@ -609,27 +758,31 @@
 
       y += 4;
       const photoSets = [
-        ['개체 클로즈업(격자)', r.closeupPhotos||[]],
-        ['서식지 파노라마', r.panoPhotos||[]]
+        ['미소서식지·개체 클로즈업(격자)', r.closeupPhotos||[], null],
+        ['방위별 전경사진', r.panoPhotos||[], panoTag]
       ];
-      for(const [label, arr] of photoSets){
+      for(const [label, arr, captionFn] of photoSets){
         if(!arr.length) continue;
         if(y>250){ doc.addPage(); y=18; }
-        doc.setFont('helvetica','bold'); doc.setFontSize(11);
+        doc.setFont('NanumGothic','bold'); doc.setFontSize(11);
         doc.text(label, margin, y); y+=5;
         let x = margin;
+        const w = 55, h = 55*0.75;
+        const rowStep = h + (captionFn ? 14 : 8);
         for(const item of arr){
           const url = await blobToDataUrl(item);
-          const w = 55, h = 55*0.75;
-          if(x + w > pageW-margin){ x = margin; y += h+8; }
-          if(y + h > 280){ doc.addPage(); y=18; x=margin; }
+          if(x + w > pageW-margin){ x = margin; y += rowStep; }
+          if(y + h > 275){ doc.addPage(); y=18; x=margin; }
           try{ doc.addImage(url, 'JPEG', x, y, w, h); }catch(e){}
+          if(captionFn){
+            doc.setFont('NanumGothic','normal'); doc.setFontSize(8);
+            doc.text(captionFn(item), x, y+h+4);
+          }
           x += w+6;
         }
-        y += h_safe(); 
+        y += rowStep + 6;
       }
     }
-    function h_safe(){ return 55*0.75+10; }
 
     const nameParts = [safeName(records[0].species)||'조사기록', safeName(records[0].datetime).slice(0,10), safeName(records[0].observer)];
     const fname = `야장_${nameParts.filter(Boolean).join('_')}${records.length>1? `_외${records.length-1}건`:''}.pdf`;
